@@ -194,7 +194,7 @@ export async function createTestSession(options: TestSessionOptions = {}): Promi
 			};
 		},
 
-		async run(...turns: Turn[]): Promise<void> {
+		prepare(...turns: Turn[]): void {
 			// Create playbook streamFn
 			const { streamFn, state } = createPlaybookStreamFn(turns);
 			playbookState = state;
@@ -223,6 +223,11 @@ export async function createTestSession(options: TestSessionOptions = {}): Promi
 				agent.state.tools = interceptedTools;
 			}
 
+		},
+
+		async run(...turns: Turn[]): Promise<void> {
+			testSession.prepare(...turns);
+			const state = playbookState!;
 			// Run each turn
 			for (const turn of turns) {
 				currentStep = state.consumed;

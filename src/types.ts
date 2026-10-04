@@ -108,6 +108,8 @@ export interface TestSessionOptions {
 }
 
 export interface TestSession {
+	/** Prepare responses/tools without sending prompts; the host drives session.prompt(). */
+	prepare(...turns: Turn[]): void;
 	/** Run a conversation script */
 	run(...turns: Turn[]): Promise<void>;
 	/** Real session underneath */
