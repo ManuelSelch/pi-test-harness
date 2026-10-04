@@ -20,7 +20,9 @@ import {
 	type AgentSessionEvent,
 } from "@earendil-works/pi-coding-agent";
 import type { AgentTool } from "@earendil-works/pi-agent-core";
-import { getModel } from "@earendil-works/pi-ai";
+// The current pi-ai package keeps the legacy catalog helper in its compat
+// entrypoint. Importing from /compat also works with the fork's 0.85.x runtime.
+import { getModel } from "@earendil-works/pi-ai/compat";
 import { createPlaybookStreamFn, type PlaybookState } from "./playbook.js";
 import { interceptToolExecution } from "./mock-tools.js";
 import { createMockUIContext } from "./mock-ui.js";
@@ -68,9 +70,16 @@ export async function createTestSession(options: TestSessionOptions = {}): Promi
 		resourceLoader: loader,
 	});
 
-	// Override getApiKey to bypass real auth checks (on both agent and session)
+	// Override auth checks to bypass real credentials. Older Pi versions exposed
+	// these through _modelRegistry; current versions keep them on modelRuntime.
 	(session.agent as any).getApiKey = async () => "test-key";
-	// The session also validates via _modelRegistry.getApiKey — patch it
+	const modelRuntime = (session as any).modelRuntime;
+	if (modelRuntime) {
+		modelRuntime.hasConfiguredAuth = () => true;
+		modelRuntime.checkAuth = async () => ({ type: "api_key", source: "test" });
+		modelRuntime.isUsingOAuth = () => false;
+		modelRuntime.getAuth = async () => ({ auth: { apiKey: "test-key" } });
+	}
 	const origModelRegistry = (session as any)._modelRegistry;
 	if (origModelRegistry) {
 		origModelRegistry.getApiKey = async () => "test-key";
@@ -190,8 +199,9 @@ export async function createTestSession(options: TestSessionOptions = {}): Promi
 			const { streamFn, state } = createPlaybookStreamFn(turns);
 			playbookState = state;
 
-			// Replace the model with the playbook
-			(session.agent as any).streamFn = streamFn;
+			// Replace the model with the playbook. Current pi-agent-core calls this
+			// property streamFunction; streamFn was the pre-0.85 name.
+			(session.agent as any).streamFunction = streamFn;
 			(session.agent as any).getApiKey = () => "test-key";
 
 			// Always wrap tools for event collection; if no mocks configured, pass empty map
