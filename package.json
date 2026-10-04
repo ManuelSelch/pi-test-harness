@@ -35,6 +35,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node -e \"require('fs').copyFileSync('src/mock-pi-script.mjs','dist/mock-pi-script.mjs')\"",
+    "prepare": "npm run build",
     "prepublishOnly": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
